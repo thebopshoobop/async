@@ -71,6 +71,18 @@ app.get("/promise", (req, res) => {
     .catch(e => res.status(500).end(e.stack));
 });
 
+app.get("/async", async (req, res) => {
+  try {
+    const categories = await Category.find();
+    const options = [{}, { _id: 0 }, { sort: { name: 1 }, limit: 10 }];
+    const products = await Product.find(...options);
+    const maxProduct = await Product.findOne({}, {}, { sort: { price: -1 } });
+    display(res, categories, products, maxProduct);
+  } catch (e) {
+    res.status(500).end(e.stack);
+  }
+});
+
 app.listen(2000, "localhost", () => {
   console.log("Good to go!");
 });
