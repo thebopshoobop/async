@@ -19,8 +19,7 @@
   "dependencies": {
     "express": "^4.15.4",
     "faker": "^4.1.0",
-    "pg": "^7.1.2",
-    "pg-hstore": "^2.3.2",
-    "sequelize": "^4.4.5"
+    "mongoose": "^4.11.6",
+    "mongooseeder": "^2.0.5"
   }
 }
