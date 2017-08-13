@@ -13,24 +13,37 @@ app.use((req, res, next) => {
     .then(() => next());
 });
 
-const display = (res, categories, products, maxProduct) => {
+const display = (res, items) => {
   let lines = [];
 
-  [categories, products, [maxProduct]].forEach(elementType => {
+  items.forEach(item => {
     lines.push("<hr>");
-    elementType.forEach(element => {
-      if (element.price) {
-        lines.push([`${element.name}: $${element.price}`]);
-      } else {
-        lines.push(element.name);
-      }
-    });
+    lines.push([`${item.name}: $${item.price}`]);
   });
 
-  lines = lines.join(" <br> ");
+  lines = lines.join("<br>");
 
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(lines);
+};
+
+const mostOpts = () => [{}, {}, { sort: { price: -1 } }];
+const leastOpts = most => {
+  return [{ category: most.category }, {}, { sort: { price: 1 } }];
+};
+const sumOpts = (most, least) => {
+  return [
+    [
+      {
+        $match: {
+          category: most.category,
+          _id: { $nin: [most._id, least._id] }
+        }
+      },
+      { $group: { _id: "$category", price: { $sum: "$price" } } },
+      { $project: { price: 1, name: "Sum" } }
+    ]
+  ];
 };
 
 app.get("/", (req, res) => {
@@ -38,46 +51,46 @@ app.get("/", (req, res) => {
 });
 
 app.get("/callback", (req, res) => {
-  Category.find((err, categories) => {
-    Product.find(
-      {},
-      { _id: 0 },
-      { sort: { name: 1 }, limit: 10 },
-      (err, products) => {
-        Product.findOne({}, {}, { sort: { price: -1 } }, (err, maxProduct) => {
-          display(res, categories, products, maxProduct);
-        });
-      }
-    );
+  const errCall = e => {
+    res.status(500).end(e.stack);
+  };
+  Product.findOne(...mostOpts(), (err, most) => {
+    if (err) return errCall(err);
+    Product.findOne(...leastOpts(most), (err, least) => {
+      if (err) return errCall(err);
+      Product.aggregate(...sumOpts(most, least), (err, sum) => {
+        if (err) return errCall(err);
+        display(res, [most, least, sum[0]]);
+      });
+    });
   });
 });
 
 app.get("/promise", (req, res) => {
-  let categories;
-  let products;
+  let most;
+  let least;
 
-  Category.find()
-    .then(cats => {
-      categories = cats;
-      return Product.find({}, { _id: 0 }, { sort: { name: 1 }, limit: 10 });
+  Product.findOne(...mostOpts())
+    .then(m => {
+      most = m;
+      return Product.findOne(...leastOpts(most));
     })
-    .then(prods => {
-      products = prods;
-      return Product.findOne({}, {}, { sort: { price: -1 } });
+    .then(l => {
+      least = l;
+      return Product.aggregate(...sumOpts(most, least));
     })
-    .then(maxProduct => {
-      display(res, categories, products, maxProduct);
+    .then(sum => {
+      display(res, [most, least, sum[0]]);
     })
     .catch(e => res.status(500).end(e.stack));
 });
 
 app.get("/async", async (req, res) => {
   try {
-    const categories = await Category.find();
-    const options = [{}, { _id: 0 }, { sort: { name: 1 }, limit: 10 }];
-    const products = await Product.find(...options);
-    const maxProduct = await Product.findOne({}, {}, { sort: { price: -1 } });
-    display(res, categories, products, maxProduct);
+    const most = await Product.findOne(...mostOpts());
+    const least = await Product.findOne(...leastOpts(most));
+    const sum = await Product.aggregate(...sumOpts(most, least));
+    display(res, [most, least, sum[0]]);
   } catch (e) {
     res.status(500).end(e.stack);
   }
