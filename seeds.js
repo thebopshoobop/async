@@ -1,7 +1,8 @@
-const models = require("../models");
+const models = require("./models");
 const { Category, Product } = models;
 const faker = require("faker");
 const adjective = faker.commerce.productAdjective;
+const mongoseeder = require("mongooseeder");
 
 const seeds = () => {
   let categories = [];
@@ -34,7 +35,7 @@ const seeds = () => {
   return Promise.all(promises);
 };
 
-require("mongooseeder").seed({
+mongoseeder.seed({
   mongodbUrl: "mongodb://localhost/async_development",
   models: models,
   clean: true,

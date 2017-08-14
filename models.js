@@ -1,6 +1,12 @@
 "use strict";
+
 const mongoose = require("mongoose");
+mongoose.Promise = require("bluebird");
 const Schema = mongoose.Schema;
+
+const CategorySchema = new Schema({
+  name: String
+});
 
 const ProductSchema = new Schema({
   name: String,
@@ -11,4 +17,7 @@ const ProductSchema = new Schema({
   }
 });
 
-module.exports = mongoose.model("Product", ProductSchema);
+module.exports = {
+  Product: mongoose.model("Product", ProductSchema),
+  Category: mongoose.model("Category", CategorySchema)
+};
